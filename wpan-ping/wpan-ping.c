@@ -33,6 +33,7 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <limits.h>
+#include <endian.h>
 
 #include <netlink/netlink.h>
 

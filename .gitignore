@@ -1,6 +1,9 @@
 *.o
 tags
 TAGS
+GPATH
+GRTAGS
+GTAGS
 Makefile
 Makefile.in
 aclocal.m4
@@ -10,3 +13,5 @@ config.*
 configure
 libtool
 stamp-h1
+wpan-hwsim/.deps/
+wpan-hwsim/wpan-hwsim

@@ -144,6 +144,22 @@ static void print_freq_handler(int channel_page, int channel)
 		printf("Unknown");
 		break;
 	}
+
+	printf(" MHz");
+}
+
+static void print_mean_prfs(unsigned int prfs)
+{
+	unsigned int pos;
+
+	if (prfs & NL802154_MEAN_PRF_4030KHZ)
+		printf("4.03 MHz (31 tc), ");
+	if (prfs & NL802154_MEAN_PRF_16100KHZ)
+		printf("16.10 MHz (31 tc), ");
+	if (prfs & NL802154_MEAN_PRF_62890KHZ)
+		printf("62.89 MHz (127 tc), ");
+	if (prfs & NL802154_MEAN_PRF_111090KHZ)
+		printf("111.03 MHz (91 tc), ");
 }
 
 static char cca_mode_buf[100];
@@ -230,6 +246,54 @@ static const char *command_name(enum nl802154_commands cmd)
 	return cmdbuf;
 }
 
+static void print_code_series(uint64_t bitmap)
+{
+	bool in_series = false;
+	int i, first = 0, last = 0;
+
+	for (i = 1; i <= 32; i++) {
+		if (bitmap & (1 << i)) {
+			if (!in_series) {
+				in_series = true;
+				first = i;
+			}
+		} else {
+			if (in_series) {
+				in_series = false;
+				last = i - 1;
+			}
+		}
+
+		if (first && last) {
+			printf("%d-%d, ", first, last);
+			first = 0;
+			last = 0;
+		}
+	}
+}
+
+static void print_preamble_codes(struct nlattr **tb_caps, unsigned int chan)
+{
+	struct nlattr *nl_channels, *nl_codes;
+	int rem_channel, rem_codes;
+	uint64_t codes;
+
+	if (!tb_caps[NL802154_CAP_ATTR_PREAMBLE_CODES])
+		return;
+
+	nla_for_each_nested(nl_channels,
+			    tb_caps[NL802154_CAP_ATTR_PREAMBLE_CODES],
+			    rem_channel) {
+		if (nla_type(nl_channels) != chan)
+			continue;
+
+		codes = nla_get_u64(nl_channels);
+		printf(" (preamble codes: ");
+		print_code_series(codes);
+		printf("\b\b)");
+	}
+}
+
 static int print_phy_handler(struct nl_msg *msg, void *arg)
 {
 	struct nlattr *tb_msg[NL802154_ATTR_MAX + 1];
@@ -282,8 +346,17 @@ static int print_phy_handler(struct nl_msg *msg, void *arg)
 		printf("current_channel: %d, ", nla_get_u8(tb_msg[NL802154_ATTR_CHANNEL]));
 		print_freq_handler(nla_get_u8(tb_msg[NL802154_ATTR_PAGE]),
 				   nla_get_u8(tb_msg[NL802154_ATTR_CHANNEL]));
-		printf(" MHz\n");
+		printf("\n");
+		if (tb_msg[NL802154_ATTR_PREAMBLE_CODE])
+			printf("current_preamble_code: %d\n",
+			       nla_get_u8(tb_msg[NL802154_ATTR_PREAMBLE_CODE]));
+		if (tb_msg[NL802154_ATTR_MEAN_PRF]) {
+			printf("current_mean_prf: ");
+			print_mean_prfs(nla_get_u8(tb_msg[NL802154_ATTR_MEAN_PRF]));
+			printf("\b\b \n");
+		}
 	}
+
 
 	if (tb_msg[NL802154_ATTR_CCA_MODE]) {
 		enum nl802154_cca_opts cca_opt = NL802154_CCA_OPT_ATTR_MAX;
@@ -322,6 +395,7 @@ static int print_phy_handler(struct nl_msg *msg, void *arg)
 			[NL802154_CAP_ATTR_MAX_FRAME_RETRIES] = { .type = NLA_U8 },
 			[NL802154_CAP_ATTR_IFTYPES] = { .type = NLA_NESTED },
 			[NL802154_CAP_ATTR_LBT] = { .type = NLA_U32 },
+			[NL802154_CAP_ATTR_PREAMBLE_CODES] = { .type = NLA_NESTED },
 		};
 
 		printf("capabilities:\n");
@@ -358,20 +432,39 @@ static int print_phy_handler(struct nl_msg *msg, void *arg)
 				counter = 0;
 				printf("\t\tpage %d: ", nla_type(nl_pages));
 				nla_for_each_nested(nl_channels, nl_pages, rem_channels) {
-					if (counter % 3 == 0) {
+					if (counter % 3 == 0 || nla_type(nl_pages) == 4) {
 						printf("\n\t\t\t[%2d] ", nla_type(nl_channels));
-						print_freq_handler(nla_type(nl_pages), nla_type(nl_channels));
-						printf(" MHz, ");
 					} else {
 						printf("[%2d] ", nla_type(nl_channels));
-						print_freq_handler(nla_type(nl_pages), nla_type(nl_channels));
-						printf(" MHz, ");
 					}
+					print_freq_handler(nla_type(nl_pages),
+							   nla_type(nl_channels));
+					if (nla_type(nl_pages) == 4)
+						print_preamble_codes(tb_caps,
+								     nla_type(nl_channels));
+					printf(", ");
 					counter++;
 				}
 				/*  TODO hack use sprintf here */
 				printf("\b\b \b\n");
 			}
+		}
+
+		if (tb_caps[NL802154_CAP_ATTR_MEAN_PRFS]) {
+			unsigned int prfs = nla_get_u8(tb_caps[NL802154_CAP_ATTR_MEAN_PRFS]);
+			if (prfs) {
+				printf("\tmean_prfs: ");
+				print_mean_prfs(prfs);
+				/* TODO */
+				printf("\b\b \n");
+			}
+		}
+
+		if (tb_caps[NL802154_CAP_ATTR_DPS]) {
+			bool dps = nla_get_u8(tb_caps[NL802154_CAP_ATTR_DPS]);
+
+			if (dps)
+				printf("\tdps: true\n");
 		}
 
 		if (tb_caps[NL802154_CAP_ATTR_TX_POWERS]) {

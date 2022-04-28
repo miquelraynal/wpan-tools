@@ -152,6 +152,9 @@ enum nl802154_attrs {
 	NL802154_ATTR_MAX_ASSOCIATIONS,
 	NL802154_ATTR_PEER,
 
+	NL802154_ATTR_PREAMBLE_CODE,
+	NL802154_ATTR_MEAN_PRF,
+
 	/* add attributes here, update the policy in nl802154.c */
 
 #ifdef CONFIG_IEEE802154_NL802154_EXPERIMENTAL
@@ -204,6 +207,9 @@ enum nl802154_iftype {
  * @NL802154_CAP_ATTR_MAX_FRAME_RETRIES: maximum of frame retries value
  * @NL802154_CAP_ATTR_IFTYPES: nl802154_iftype flags
  * @NL802154_CAP_ATTR_LBT: nl802154_supported_bool_states flags
+ * @NL802154_CAP_ATTR_PREAMBLE_CODES: a nested attribute for preamble codes
+ * @NL802154_CAP_ATTR_MEAN_PRFS: supported mean PRFs
+ * @NL802154_CAP_ATTR_DPS: DPS support flag
  * @NL802154_CAP_ATTR_MAX: highest cap attribute currently defined
  * @__NL802154_CAP_ATTR_AFTER_LAST: internal use
  */
@@ -233,9 +239,34 @@ enum nl802154_wpan_phy_capability_attr {
 
 	NL802154_CAP_ATTR_LBT,
 
+	NL802154_CAP_ATTR_PREAMBLE_CODES,
+	NL802154_CAP_ATTR_MEAN_PRFS,
+	NL802154_CAP_ATTR_DPS,
+
 	/* keep last */
 	__NL802154_CAP_ATTR_AFTER_LAST,
 	NL802154_CAP_ATTR_MAX = __NL802154_CAP_ATTR_AFTER_LAST - 1
+};
+
+/**
+ * enum nl802154_mean_prfs - Mean PRFs that can be requested with UWB PHYs
+ *
+ * @__NL802154_NO_PRF: An invalid mean PRF or absence of mean PRF.
+ * @NL802154_MEAN_PRF_4030KHZ: A mean PRF of 4.03MHz, mandatory.
+ *                             Works with preamble codes of length 31.
+ * @NL802154_MEAN_PRF_16100KHZ: A mean PRF of 16.10MHz, optional.
+ *                              Works with preamble codes of length 31.
+ * @NL802154_MEAN_PRF_62890KHZ: A mean PRF of 62.89MHz, optional.
+ *                              Works with preamble codes of length 127.
+ * @NL802154_MEAN_PRF_111090KHZ: A mean PRF of 111.09MHz, optional.
+ *                               Works with preamble codes of length 91.
+ */
+enum nl802154_mean_prfs {
+	__NL802154_NO_MEAN_PRF = 0,
+	NL802154_MEAN_PRF_4030KHZ = (1 << 0),
+	NL802154_MEAN_PRF_16100KHZ = (1 << 1),
+	NL802154_MEAN_PRF_62890KHZ = (1 << 2),
+	NL802154_MEAN_PRF_111090KHZ = (1 << 3),
 };
 
 /**

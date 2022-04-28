@@ -25,6 +25,8 @@ static int handle_channel_set(struct nl802154_state *state,
 {
 	unsigned long channel;
 	unsigned long page;
+	unsigned long preamble_code = 0;
+	unsigned long mean_prf = 0;
 	char *end;
 
 	if (argc < 2)
@@ -43,15 +45,39 @@ static int handle_channel_set(struct nl802154_state *state,
 	if (page > UINT8_MAX || channel > UINT8_MAX)
 		return 1;
 
+	/* PREAMBLE CODE */
+	if (argc >= 3) {
+		preamble_code = strtoul(argv[2], &end, 10);
+		if (*end != '\0')
+			return 1;
+
+		if (preamble_code > UINT8_MAX)
+			return 1;
+	}
+
+	/* MEAN PRF */
+	if (argc >= 4) {
+		mean_prf = strtoul(argv[3], &end, 10);
+		if (*end != '\0')
+			return 1;
+
+		if (mean_prf > UINT8_MAX)
+			return 1;
+	}
+
 	NLA_PUT_U8(msg, NL802154_ATTR_PAGE, page);
 	NLA_PUT_U8(msg, NL802154_ATTR_CHANNEL, channel);
+	if (preamble_code)
+		NLA_PUT_U8(msg, NL802154_ATTR_PREAMBLE_CODE, preamble_code);
+	if (mean_prf)
+		NLA_PUT_U8(msg, NL802154_ATTR_MEAN_PRF, mean_prf);
 
 	return 0;
 
 nla_put_failure:
 	return -ENOBUFS;
 }
-COMMAND(set, channel, "<page> <channel>",
+COMMAND(set, channel, "<page> <channel> [<preamble_code> [<mean_prf>]]",
 	NL802154_CMD_SET_CHANNEL, 0, CIB_PHY, handle_channel_set, NULL);
 
 static int handle_tx_power_set(struct nl802154_state *state,

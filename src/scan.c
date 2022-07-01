@@ -110,9 +110,9 @@ static int scan_trigger_handler(struct nl802154_state *state,
 				enum id_input id)
 {
 	enum nl802154_scan_types type;
-	unsigned long page, channels, duration;
+	unsigned long page, channels, codes, prf, duration;
 	int tpset;
-	bool valid_page, valid_channels, valid_duration;
+	bool valid_page, valid_channels, valid_codes, valid_prf, valid_duration;
 
 	if (argc < 2)
 		return 1;
@@ -133,6 +133,18 @@ static int scan_trigger_handler(struct nl802154_state *state,
 	if (valid_channels && channels > UINT32_MAX)
 		return 1;
 
+	tpset = get_option_value(&argc, &argv, "codes", &codes, &valid_codes);
+	if (tpset)
+		return tpset;
+	if (valid_codes && codes > UINT32_MAX)
+		return 1;
+
+	tpset = get_option_value(&argc, &argv, "prf", &prf, &valid_prf);
+	if (tpset)
+		return tpset;
+	if (valid_prf && prf > UINT8_MAX)
+		return 1;
+
 	tpset = get_option_value(&argc, &argv, "duration", &duration, &valid_duration);
 	if (tpset)
 		return tpset;
@@ -151,6 +163,10 @@ static int scan_trigger_handler(struct nl802154_state *state,
 		NLA_PUT_U8(msg, NL802154_ATTR_PAGE, page);
 	if (valid_channels)
 		NLA_PUT_U32(msg, NL802154_ATTR_SCAN_CHANNELS, channels);
+	if (valid_codes)
+		NLA_PUT_U32(msg, NL802154_ATTR_SCAN_PREAMBLE_CODES, codes);
+	if (valid_prf)
+		NLA_PUT_U8(msg, NL802154_ATTR_SCAN_MEAN_PRF, prf);
 
 	/* TODO: support IES parameters for active scans */
 
@@ -340,6 +356,12 @@ static int print_new_coordinator(struct nlattr *nestedcoord,
 	}
 	if (pan[NL802154_COORD_CHANNEL]) {
 		printf("\tchannel %u\n", nla_get_u8(pan[NL802154_COORD_CHANNEL]));
+	}
+	if (pan[NL802154_COORD_PREAMBLE_CODE]) {
+		printf("\tpreamble code %u\n", nla_get_u8(pan[NL802154_COORD_PREAMBLE_CODE]));
+	}
+	if (pan[NL802154_COORD_MEAN_PRF]) {
+		printf("\tmean prf %u\n", nla_get_u8(pan[NL802154_COORD_MEAN_PRF]));
 	}
 	if (pan[NL802154_COORD_SUPERFRAME_SPEC]) {
 		printf("\tsuperframe spec. 0x%x\n", nla_get_u16(
